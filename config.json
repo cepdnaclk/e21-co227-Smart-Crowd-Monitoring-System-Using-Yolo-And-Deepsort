@@ -1,0 +1,56 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "crowd_monitor",
+    "user": "postgres",
+    "password": "111@Postgres"
+  },
+  "yolo": {
+    "model_path": "yolov8n.pt",
+    "device": "cuda"
+  },
+  "default_threshold": 50,
+  "buildings": {
+    "1": {
+      "threshold": 50,
+      "entrance": {
+        "url": "people_video3.mp4",
+        "line": {
+          "type": "horizontal",
+          "coords": [0, 240, 480, 240],
+          "enter_direction": "down"
+        }
+      },
+      "exit": {
+        "url": "people_video3.mp4",
+        "line": {
+          "type": "horizontal",
+          "coords": [0, 240, 480, 240],
+          "enter_direction": "up"   
+        }
+      }
+    },
+    "2": {
+      "threshold": 50,
+      "entrance": {
+        "url": "people_video3.mp4",
+        "line": {
+          "type": "horizontal",
+          "coords": [0, 240, 480, 240],
+          "enter_direction": "down"   
+        }
+      },
+      "exit": {
+        "url": "people_video3.mp4",
+        "line": {
+          "type": "horizontal",
+          "coords": [0, 240, 480, 240],
+          "enter_direction": "up"  
+        }
+      }
+    }
+  }
+}
+
+
