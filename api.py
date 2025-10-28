@@ -4,15 +4,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import cv2
 import json
 import sys
 import uvicorn
 import os
 import time
+import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
-app = FastAPI()
+"""FastAPI app providing crowd counts and history from PostgreSQL.
+
+Note: Startup/shutdown use FastAPI lifespan to avoid deprecated on_event.
+"""
 
 # --- Load config first ---
 CONFIG_PATH = "config.json"
@@ -52,23 +56,14 @@ for b_id, cams in config.get("buildings", {}).items():
 
 
 
-# Globals to hold connection/cursor
+"""Globals for DB connection; set during lifespan startup."""
 conn = None
 cur = None
 
-# --- CORS ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-
-# ---------------- DB EVENTS ----------------
-@app.on_event("startup")
-def startup():
-    """Open DB connection once at startup with retry logic."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage DB connection with retries using FastAPI lifespan API."""
     global conn, cur
     retries = 0
     while retries < 5:
@@ -78,30 +73,36 @@ def startup():
                 database=DB_NAME,
                 user=DB_USER,
                 password=DB_PASS,
-                port=DB_PORT
+                port=DB_PORT,
             )
             cur = conn.cursor(cursor_factory=RealDictCursor)
             print("✅ DB connected (API)")
-            return
+            break
         except Exception as e:
             retries += 1
             print(f"❌ API DB connect failed (attempt {retries}): {e}")
-            time.sleep(5 * retries)
+            await asyncio.sleep(5 * retries)
 
-    print("🚨 API could not connect to DB after multiple retries")
-    conn = None
-    cur = None
+    try:
+        yield
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        print("DB disconnected")
 
 
-@app.on_event("shutdown")
-def shutdown():
-    """Close DB connection cleanly at shutdown."""
-    global cur, conn
-    if cur:
-        cur.close()
-    if conn:
-        conn.close()
-    print("DB disconnected")
+# Create app with lifespan
+app = FastAPI(lifespan=lifespan)
+
+# --- CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------- API ENDPOINTS ----------------
 @app.get("/crowd")
@@ -187,13 +188,17 @@ def get_crowd_history(
         return {"error": f"DB query failed: {e}"}
 
 # Serve React build if present, otherwise fall back to current directory
-try:
-    frontend_dist = os.path.join(base_path, "frontend", "dist")
-    static_dir = frontend_dist if os.path.isdir(frontend_dist) else base_path
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-    print(f"Static served from: {static_dir}")
-except Exception as e:
-    print(f"Static mount failed: {e}")
+# Allow disabling in tests with DISABLE_STATIC=1 to avoid any route shadowing
+if os.getenv("DISABLE_STATIC") != "1":
+    try:
+        frontend_dist = os.path.join(base_path, "frontend", "dist")
+        static_dir = frontend_dist if os.path.isdir(frontend_dist) else base_path
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+        print(f"Static served from: {static_dir}")
+    except Exception as e:
+        print(f"Static mount failed: {e}")
+else:
+    print("Static mounting disabled via DISABLE_STATIC=1")
 
 
 if __name__ == "__main__":

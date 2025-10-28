@@ -19,7 +19,7 @@
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
-          "enter_direction": "down"
+          "enter_direction": "up"
         }
       },
       "exit": {
@@ -38,7 +38,7 @@
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
-          "enter_direction": "down"   
+          "enter_direction": "up"   
         }
       },
       "exit": {

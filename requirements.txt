@@ -24,3 +24,8 @@ python-dateutil>=2.8,<3.0
 
 # Optional (uncomment if you use environment files)
 # python-dotenv>=1.0,<2.0
+
+# Testing
+pytest>=7.0,<9.0
+# Pin httpx below 0.28 for compatibility with starlette TestClient in FastAPI 0.110
+httpx>=0.24,<0.28
