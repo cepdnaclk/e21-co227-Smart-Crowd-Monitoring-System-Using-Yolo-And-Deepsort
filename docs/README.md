@@ -3,8 +3,8 @@
 ## Team
 - E/21/124, Ekanayake E.M.D.A., e21124@eng.pdn.ac.lk
 - E/21/361, Sasindu K.T., e21361@eng.pdn.ac.lk
-- E/21/371, SENAWIRATHNE D.M.W.J.I., e21371@eng.pdn.ac.lk
-- E/21/433, WICKRAMANAYAKA N.S., e21433@eng.pdn.ac.lk
+- E/21/371, Senawirathne D.M.W.J.I., e21371@eng.pdn.ac.lk
+- E/21/433, Wickramanayaka N.S., e21433@eng.pdn.ac.lk
 
 ## Supervisor
 - Ms. Yasodha Vimukthi, yasodhav@eng.pdn.ac.lk
