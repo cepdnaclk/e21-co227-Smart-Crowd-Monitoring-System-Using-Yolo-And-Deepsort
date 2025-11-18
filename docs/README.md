@@ -44,9 +44,9 @@ main.py (processing threads) --> PostgreSQL <-- api.py (FastAPI) <-- React front
 - Config: JSON file and environment overrides
 
 ## Links
-- Project Repository: https://github.com/Anji-001/Project_CCTV
-- Department of Computer Engineering: https://www.ce.pdn.ac.lk/
-- University of Peradeniya: https://www.pdn.ac.lk/
+- [Project Repository](https://github.com/Anji-001/Project_CCTV)
+- [Department of Computer Engineering](https://www.ce.pdn.ac.lk/)
+- [University of Peradeniya](https://www.pdn.ac.lk/)
 
 
 
