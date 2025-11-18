@@ -2,7 +2,7 @@
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
 import cv2
-from db_handler import CrowdDatabase
+from .db_handler import CrowdDatabase
 import threading
 import time
 import json
@@ -14,12 +14,30 @@ import sys
 import os
 import json
 
+def _project_root(path: str) -> str:
+    return os.path.abspath(os.path.join(path, os.pardir))
+
+
 if getattr(sys, "frozen", False):
     # Running as .exe
-    config_path = os.path.join(os.path.dirname(sys.executable), "config.json")
+    base_dir = os.path.dirname(sys.executable)
 else:
-    # Running as script
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    # Running as module/script
+    base_dir = os.path.dirname(__file__)
+
+# Resolve config from common locations
+def _find_config(base_dir: str) -> str:
+    candidates = [
+        os.path.join(base_dir, "config.json"),
+        os.path.join(_project_root(base_dir), "config", "config.json"),
+        os.path.join(_project_root(base_dir), "config.json"),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    raise FileNotFoundError("config.json not found in expected locations (app dir, ../config/, ../)")
+
+config_path = _find_config(base_dir)
 
 print("Loading config from:", config_path)
 with open(config_path, "r") as f:
@@ -34,7 +52,23 @@ yolo_cfg = config.get("yolo", {})
 model_path = yolo_cfg.get("model_path", "yolov8n.pt")
 device = yolo_cfg.get("device", "cuda")  # set to "cpu" if no GPU
 
-model = YOLO(model_path)
+# Resolve model path if given relative path
+def _resolve_model_path(path: str) -> str:
+    if os.path.isabs(path) and os.path.exists(path):
+        return path
+    # try base_dir, project root, and models folder at project root
+    candidates = [
+        os.path.join(base_dir, path),
+        os.path.join(_project_root(base_dir), path),
+        os.path.join(_project_root(base_dir), "models", os.path.basename(path)),
+        os.path.join(_project_root(base_dir), "assets", "models", os.path.basename(path)),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return path
+
+model = YOLO(_resolve_model_path(model_path))
 if device == "cuda":
     model.to("cuda")
 else:
@@ -81,8 +115,28 @@ def process_building(building_id, feeds, shared_counters, lock):
     entrance_cfg = normalize_feed_entry(feeds.get("entrance"))
     exit_cfg = normalize_feed_entry(feeds.get("exit"))
 
-    entrance_url = entrance_cfg["url"]
-    exit_url = exit_cfg["url"]
+    def _resolve_media_url(url: str | None) -> str | None:
+        if not url:
+            return url
+        # network streams
+        if "://" in url:
+            return url
+        if os.path.isabs(url) and os.path.exists(url):
+            return url
+        # try common locations
+        candidates = [
+            os.path.join(base_dir, url),
+            os.path.join(_project_root(base_dir), url),
+            os.path.join(_project_root(base_dir), "media", url),
+            os.path.join(_project_root(base_dir), "assets", "media", url),
+        ]
+        for p in candidates:
+            if os.path.exists(p):
+                return p
+        return url
+
+    entrance_url = _resolve_media_url(entrance_cfg["url"])  # type: ignore[index]
+    exit_url = _resolve_media_url(exit_cfg["url"])  # type: ignore[index]
 
     counters = {
         "entrance_count": 0,

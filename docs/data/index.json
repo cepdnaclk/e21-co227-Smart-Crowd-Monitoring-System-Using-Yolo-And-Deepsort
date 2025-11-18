@@ -1,0 +1,42 @@
+
+{
+    "title": "Smart Crowd Monitoring System Using YOLO and Deepsort",
+    "team": [
+    {
+        "name": "Ekanayake E.M.D.A.",
+        "email": "e21124@eng.pdn.ac.lk",
+        "eNumber": "E/21/124"
+    },
+    {
+        "name": "Sasindu K.T.",
+        "email": "e21361@eng.pdn.ac.lk",
+        "eNumber": "E/21/361"
+    },
+    {
+        "name": "SENAWIRATHNE D.M.W.J.I.",
+        "email": "e21371@eng.pdn.ac.lk",
+        "eNumber": "E/21/371"
+    },
+    {
+        "name": "WICKRAMANAYAKA N.S.",
+        "email": "e21433@eng.pdn.ac.lk",
+        "eNumber": "E/21/433"
+    }
+    ],
+    "supervisors": [
+    {
+        "name": "Ms. Yasodha Vimukthi",
+        "email": "yasodhav@eng.pdn.ac.lk"
+    }
+    ],
+    "tags": [
+        "Computer Vision",
+        "Deep Learning",
+        "Object Detection",
+        "Object Tracking",
+        "YOLO",
+        "DeepSORT",
+        "Crowd Monitoring",
+        "Real-time"
+    ]
+}

@@ -18,15 +18,33 @@ from datetime import datetime, timedelta
 Note: Startup/shutdown use FastAPI lifespan to avoid deprecated on_event.
 """
 
+def _project_root(path: str) -> str:
+    return os.path.abspath(os.path.join(path, os.pardir))
+
+
 # --- Load config first ---
-CONFIG_PATH = "config.json"
 if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS
+    base_path = sys._MEIPASS  # type: ignore[attr-defined]
 else:
     base_path = os.path.dirname(__file__)
 
-with open(os.path.join(base_path, CONFIG_PATH)) as f:
-    config = json.load(f)
+def _load_config(base_path: str) -> dict:
+    candidates = [
+        os.path.join(base_path, "config.json"),
+        os.path.join(_project_root(base_path), "config", "config.json"),
+        os.path.join(_project_root(base_path), "config.json"),
+    ]
+    for p in candidates:
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception:
+            pass
+    raise FileNotFoundError("config.json not found in expected locations (app dir, ../config/, ../)")
+
+
+config = _load_config(base_path)
 
 # --- DB credentials ---
 db_config = config.get("database", {})
@@ -191,8 +209,8 @@ def get_crowd_history(
 # Allow disabling in tests with DISABLE_STATIC=1 to avoid any route shadowing
 if os.getenv("DISABLE_STATIC") != "1":
     try:
-        frontend_dist = os.path.join(base_path, "frontend", "dist")
-        static_dir = frontend_dist if os.path.isdir(frontend_dist) else base_path
+        frontend_dist = os.path.join(_project_root(base_path), "frontend", "dist")
+        static_dir = frontend_dist if os.path.isdir(frontend_dist) else _project_root(base_path)
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
         print(f"Static served from: {static_dir}")
     except Exception as e:

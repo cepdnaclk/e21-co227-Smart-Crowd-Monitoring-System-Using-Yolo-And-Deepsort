@@ -15,7 +15,7 @@
     "1": {
       "threshold": 50,
       "entrance": {
-        "url": "people_video3.mp4",
+        "url": "docs/media/people_video3.mp4",
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
@@ -23,7 +23,7 @@
         }
       },
       "exit": {
-        "url": "people_video3.mp4",
+        "url": "docs/media/people_video3.mp4",
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
@@ -34,7 +34,7 @@
     "3": {
       "threshold": 50,
       "entrance": {
-        "url": "people_video3.mp4",
+        "url": "docs/media/people_video3.mp4",
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
@@ -42,7 +42,7 @@
         }
       },
       "exit": {
-        "url": "people_video3.mp4",
+        "url": "docs/media/people_video3.mp4",
         "line": {
           "type": "horizontal",
           "coords": [0, 240, 480, 240],
