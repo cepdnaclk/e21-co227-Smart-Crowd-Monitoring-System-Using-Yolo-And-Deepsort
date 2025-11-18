@@ -94,10 +94,11 @@ def process_building(building_id, feeds, shared_counters, lock):
         "last_count_frame_in": {},
         "last_count_frame_out": {},
     }
-    frame_id = {"entrance": 0, "exit": 0}
+    frame_id = {"entrance": 0, "exit": 0} #Keeps track of the frame number for both cameras.
 
+    # helper: open VideoCapture with retries
     def open_capture(url):
-        cap = cv2.VideoCapture(url)
+        cap = cv2.VideoCapture(url) #Tries to open the camera stream or video file at the given UR
         retry = 0
         while not cap.isOpened():
             print(f"[Building {building_id}] Failed to open {url}. Retrying in 5 seconds...")
@@ -109,11 +110,13 @@ def process_building(building_id, feeds, shared_counters, lock):
                 return None
         return cap
 
-    cap_in = open_capture(entrance_url)
+    cap_in = open_capture(entrance_url) #Tries to open the entrance camera stream or video file.
     cap_out = None
+    # Only open exit capture if exit feed is provided
     if "exit" in feeds:
         cap_out = open_capture(exit_cfg["url"])
 
+    # If both streams failed to open, exit thread
     if cap_in is None and cap_out is None:
         print(f"[Building {building_id}] Streams not available. Exiting thread.")
         return
@@ -122,39 +125,42 @@ def process_building(building_id, feeds, shared_counters, lock):
     def spec_to_pixel(spec, length):
         if spec is None:
             return None
+        # Tries to convert spec into a floating-point number.
         try:
-            v = float(spec)
-        except Exception:
+            v = float(spec) 
+        except Exception: 
             return None
-        if 0.0 <= v <= 1.0:
+        if 0.0 <= v <= 1.0: #If the given value is between 0 and 1, it’s treated as a normalized ratio.
             return int(v * length)
-        return int(v)
+        return int(v) #Otherwise, treat it as a raw pixel value.
 
     while True:
         # --- Entrance ---
         if not cap_in.isOpened():
             print(f"[Building {building_id}] Entrance stream lost. Reconnecting...")
-            cap_in.release()
+            cap_in.release() #Releases the current VideoCapture object.
             cap_in = open_capture(entrance_url)
             if cap_in is None:
                 time.sleep(5)
                 continue
 
-        ret_in, frame_in = cap_in.read()
+        ret_in, frame_in = cap_in.read() #Reads one frame from the entrance video feed.
+        # If reading fails, try to reconnect.
         if not ret_in:
             print(f"[Building {building_id}] Entrance read failed. Reconnecting...")
             cap_in.release()
             cap_in = open_capture(entrance_url)
             continue
+        
 
-        frame_id["entrance"] += 1
+        frame_id["entrance"] += 1 #
         if frame_id["entrance"] % 3 == 0:
             frame_in = cv2.resize(frame_in, (640, 480))
-            h_in, w_in = frame_in.shape[:2]
+            h_in, w_in = frame_in.shape[:2] 
 
             # compute pixel line positions for this resolution
-            line_cfg = entrance_cfg.get("line")
-            hline_in, vline_in = None, None
+            line_cfg = entrance_cfg.get("line") #Gets the line configuration for the entrance camera.
+            hline_in, vline_in = None, None #Initializes horizontal and vertical line positions to None.
             enter_dir_in = None
             if line_cfg:
                 enter_dir_in = line_cfg.get("enter_direction")  # 'down'|'up' for horizontal, 'right'|'left' for vertical
@@ -163,8 +169,9 @@ def process_building(building_id, feeds, shared_counters, lock):
                 elif line_cfg["type"] == "vertical":
                     vline_in = line_cfg["coords"][0]
 
-
+            
             results_in = model(frame_in, conf=0.4, verbose=False)
+            # extract person detections
             detections_in = [
                 ([int(r.xyxy[0][0]), int(r.xyxy[0][1]),
                   int(r.xyxy[0][2] - r.xyxy[0][0]),
@@ -173,13 +180,15 @@ def process_building(building_id, feeds, shared_counters, lock):
                 for r in results_in[0].boxes if model.names[int(r.cls[0])] == "person"
             ]
 
-            tracks_in = tracker_in.update_tracks(detections_in, frame=frame_in)
+            # deep sort tracking
+            tracks_in = tracker_in.update_tracks(detections_in, frame=frame_in) 
+            #Updates the tracker with the new detections for the current frame.
             for track in tracks_in:
                 if not track.is_confirmed():
                     continue
-                tid = track.track_id
-                x1, y1, x2, y2 = map(int, track.to_ltrb())
-                cx, cy = (x1 + x2)//2, (y1 + y2)//2
+                tid = track.track_id #Gets the unique track ID for the current tracked object.
+                x1, y1, x2, y2 = map(int, track.to_ltrb()) #Gets the bounding box coordinates for the tracked object.
+                cx, cy = (x1 + x2)//2, (y1 + y2)//2 #Calculates the center coordinates of the bounding box.
 
                 # only for one direction
                 # prev = counters["memory_in"].get(tid)
@@ -199,10 +208,11 @@ def process_building(building_id, feeds, shared_counters, lock):
                 #     if counted:
                 #         counters["last_count_frame_in"][tid] = frame_id["entrance"]
                 
-                prev = counters["memory_in"].get(tid)
-                last_frame = counters["last_count_frame_in"].get(tid, -9999)
+                prev = counters["memory_in"].get(tid) #Retrieves the previous position of the tracked object from memory.
+                last_frame = counters["last_count_frame_in"].get(tid, -9999) #Gets the last frame number when this object was counted.
+                # simple debounce: ignore if we counted this tid in last 5 frames
                 if prev is not None and (frame_id["entrance"] - last_frame) > 5:
-                    prev_cx, prev_cy = prev["cx"], prev["cy"]
+                    prev_cx, prev_cy = prev["cx"], prev["cy"] #Gets the previous center coordinates of the tracked object.
 
                     # Horizontal line logic
                     if hline_in is not None:
@@ -231,7 +241,7 @@ def process_building(building_id, feeds, shared_counters, lock):
 
 
                 # update memory
-                counters["memory_in"][tid] = {"cx": cx, "cy": cy}
+                counters["memory_in"][tid] = {"cx": cx, "cy": cy} #Updates the memory with the current position of the tracked object.
 
                 # draw bbox + id
                 cv2.rectangle(frame_in, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -247,7 +257,7 @@ def process_building(building_id, feeds, shared_counters, lock):
                 cv2.line(frame_in, (vline_in, 0), (vline_in, h_in), (255,0,0), 2)
                 cv2.putText(frame_in, f"V: {vline_in}", (min(w_in-80, vline_in+5), 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
-
+            # draw counts
             cv2.putText(frame_in, f"Entrance: {counters['entrance_count']}", (20,40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
             cv2.imshow(f"Building {building_id} Entrance", frame_in)
@@ -373,6 +383,7 @@ def process_building(building_id, feeds, shared_counters, lock):
 
         # Update shared counters
         crowd_inside = max(0, counters["entrance_count"] - counters["exit_count"])
+        # lock ensures that only one thread updates shared_counters at a time
         with lock:
             shared_counters[building_id] = crowd_inside
         #print(f"Building {building_id} Inside: {crowd_inside}")
@@ -380,15 +391,17 @@ def process_building(building_id, feeds, shared_counters, lock):
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
+    # Cleanup        
     cap_in.release()
     cap_out.release()
 
 
 # -------------------- START THREADS --------------------
-shared_counters = {}
-lock = threading.Lock()
-threads = []
+shared_counters = {} # building_id -> current count inside
+lock = threading.Lock() # to protect shared_counters access
+threads = [] # list of building threads
 
+# Start a Thread for Each Building
 for building_id, feeds in buildings.items():
     t = threading.Thread(target=process_building, args=(building_id, feeds, shared_counters, lock))
     t.start()
@@ -401,11 +414,13 @@ def db_updater():
             db.insert_multiple_counts(shared_counters)
         time.sleep(1)
 
-db_thread = threading.Thread(target=db_updater, daemon=True)
+db_thread = threading.Thread(target=db_updater, daemon=True) #Daemon thread will exit when main program exits
 db_thread.start()
 
+# Wait for all building threads to finish
 for t in threads:
     t.join()
 
+# Cleanup
 cv2.destroyAllWindows()
 db.close()

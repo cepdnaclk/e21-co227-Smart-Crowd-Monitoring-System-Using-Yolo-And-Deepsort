@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+.venv/
+.env
+.env.*
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+.npm/
+
+# Test & tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# VSCode / Editors
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model weights & media (keep small default sample files, ignore large dumps)
+# Uncomment if you add large custom models/videos
+# models/
+# recordings/
+
+# Build/Packaging
+build/
+*.egg-info/
+
+# Misc
+*.bak

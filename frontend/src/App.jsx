@@ -90,6 +90,11 @@ export default function App() {
 
       {/* KPI Row */}
       <div className="kpis">
+        {/* Building Count KPI */}
+        <div className="kpi">
+          <div className="kpi-title">Total Buildings</div>
+          <div className="kpi-value">{data?.length ?? 0}</div>
+        </div>
         <div className="kpi">
           <div className="kpi-title">Total People Inside</div>
           <div className="kpi-value">{kpis.totalPeople}</div>
